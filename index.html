@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title></title>
+    <link href="https://cdn.bootcss.com/bootstrap/4.1.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        
+        html,
+        body {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            padding: 10px 0;
+        }
+        
+        #talk {
+            padding: 0 5px;
+            height: 75%;
+        }
+        
+        #user-talk {
+            width: 65%;
+            padding-left: 5px;
+            border: 1px solid #e1e1e1;
+        }
+        
+        #ul {
+            height: 100%;
+            overflow: auto;
+        }
+        
+        li {
+            list-style: none;
+        }
+        
+        #user-online {
+            width: 30%;
+            padding-left: 5px;
+            border: 1px solid #ccc;
+            overflow: auto;
+            margin-left: 20px;
+        }
+        
+        #online {}
+        
+        #form {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 20%;
+        }
+    </style>
+</head>
+
+<body class="container">
+    <script type="text/javascript">
+        window.onload = () => {
+            const close = getIdNode('close');
+            const reload = getIdNode('reload');
+            reload.style.display = 'none';
+            reload.addEventListener('click', function() {
+                location.reload();
+            });
+            close.addEventListener('click', () => {
+                close.style.display = 'none';
+                reload.style.display = 'inline-block';
+                ws.close();
+            });
+        }
+        var ws = new WebSocket("ws://localhost:8180");
+        ws.onopen = (e) => {
+            console.log('Connection to server opened');
+        }
+
+        function sendMessage() {
+            const txt = getIdNode('txt').value;
+            ws.send(txt);
+        }
+        //关闭连接  
+        ws.onclose = (msg) => {
+            console.log('连接关闭');
+        };
+        //拿到返回  
+        ws.onmessage = function(e) {
+            const msg = JSON.parse(e.data);
+            console.log(msg);
+            let ul, li, user_div, user_online, child;
+            switch (msg.type) {
+                case 'message': // 得到消息,显示在聊天框内
+                    ul = getIdNode('ul');
+                    li = createEle('li');
+                    li.innerHTML = '用户:' + msg.nickname + ':' + '<br />' + '<strong>' + msg.message + '</strong>';
+                    ul.appendChild(li);
+                    ul.scrollTop = ul.scrollHeight;
+                    break;
+                case 'connect': // 存在新用户连接,聊天框提示并且用户栏更新当前用户
+                    const fun = (name) => {
+                        child = createEle('div');
+                        child.className = 'online';
+                        child.innerText = name;
+                        child.id = name;
+                        user_div.appendChild(child);
+                    }
+                    user_online = getIdNode('user-online');
+                    user_div = getIdNode('online');
+                    user_online.removeChild(user_div);
+                    user_div = createEle('div');
+                    user_div.id = 'online';
+                    user_online.appendChild(user_div);
+                    if (msg.nickname.indexOf(',') >= 0) {
+                        const nameArr = msg.nickname.split(',');
+                        nameArr.forEach(ele => fun(ele));
+                    } else fun(msg.nickname);
+                    user_div.scrollTop = user_div.scrollHeight;
+                    ul = getIdNode('ul');
+                    li = createEle('li');
+                    li.className = msg.id;
+                    li.innerText = '系统消息: 用户' + msg.message;
+                    ul.appendChild(li);
+                    ul.scrollTop = ul.scrollHeight;
+                    break;
+                case 'close': // 聊天框提示用户退出,用户删除退出的用户
+                    user_div = getIdNode('online');
+                    child = getIdNode(msg.nickname);
+                    user_div.removeChild(child);
+                    ul = getIdNode('ul');
+                    li = createEle('li');
+                    li.innerHTML = msg.message;
+                    ul.appendChild(li);
+                    ul.scrollTop = ul.scrollHeight;
+                    break;
+            }
+        };
+        const createEle = (ele) => {
+            return document.createElement(ele);
+        }
+        const getIdNode = (id) => {
+            return document.getElementById(id);
+        }
+    </script>
+    <div class="row" id="talk">
+        <div id="user-talk" class="">
+            <ul id="ul"></ul>
+        </div>
+        <div id="user-online" class="">
+            在线用户:
+            <div id="online"></div>
+        </div>
+    </div>
+    <form class="form-control" id="form">
+        <label for="txt">说点啥?</label>
+        <input type="text" class="form-control col-md-4" id="txt" /><br />
+        <button type="button" class="btn btn-primary" onclick="sendMessage()">发送</button>
+        <button type="button" class="btn btn-warning" id="close">离开</button>
+        <button type="button" class="btn btn-default" id="reload">重连</button>
+    </form>
+
+</body>
+
+</html>
