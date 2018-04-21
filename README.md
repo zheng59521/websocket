@@ -1,4 +1,4 @@
 # websocket
 A simple websocket demo<br />
-  npm install ws
-  npm install node-uuid
+**npm install ws** <br />
+**npm install node-uuid**
